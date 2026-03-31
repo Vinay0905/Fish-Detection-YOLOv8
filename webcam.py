@@ -1,21 +1,48 @@
 import cv2
 from ultralytics import YOLO
 
-model = YOLO("yolov8n.pt")  # Load YOLOv8 model
-cap = cv2.VideoCapture(1)  # Use camera (Change to your external camera if needed)
 
-while cap.isOpened():
-    ret, frame = cap.read()
-    if not ret:
-        break
-    
-    results = model(frame)  # Run YOLO
-    for r in results:
-        frame = r.plot()  # Draw detections
+def initialize_model(weights_path="yolov8n.pt"):
+    return YOLO(weights_path)
 
-    cv2.imshow("YOLOv8 Detection", frame)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
 
-cap.release()
-cv2.destroyAllWindows()
+def open_camera(source=1):
+    cam = cv2.VideoCapture(source)
+    if not cam.isOpened():
+        raise RuntimeError("Unable to access camera")
+    return cam
+
+
+def process_frame(model, frame):
+    detections = model(frame)
+    for detection in detections:
+        frame = detection.plot()
+    return frame
+
+
+def main():
+    detector = initialize_model()
+    camera = open_camera()
+
+    window_name = "Object Detection Stream"
+
+    try:
+        while True:
+            success, image = camera.read()
+            if not success:
+                break
+
+            output_frame = process_frame(detector, image)
+            cv2.imshow(window_name, output_frame)
+
+            key = cv2.waitKey(1)
+            if key == ord('q'):
+                break
+
+    finally:
+        camera.release()
+        cv2.destroyAllWindows()
+
+
+if __name__ == "__main__":
+    main()
